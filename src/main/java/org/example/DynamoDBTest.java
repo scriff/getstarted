@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,6 +15,7 @@ import software.amazon.awssdk.services.dynamodb.model.AttributeDefinition;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.DescribeTableRequest;
 import software.amazon.awssdk.services.dynamodb.model.DynamoDbException;
+import software.amazon.awssdk.services.dynamodb.model.GetItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.ListTablesRequest;
 import software.amazon.awssdk.services.dynamodb.model.ListTablesResponse;
 import software.amazon.awssdk.services.dynamodb.model.ProvisionedThroughputDescription;
@@ -74,10 +77,10 @@ public class DynamoDBTest {
 	
 	public static void runTests(DynamoDBTest tester)
 	{
-		List<String> l = tester.listAllTables();
-		tester.describeDymamoDBTables(l);
+		//List<String> l = tester.listAllTables();
+		//tester.describeDymamoDBTables(l);
 		tester.testPut();
-		tester.getConnectionManager().closeConnections();
+		tester.testGet();
 	}
 
 	public void describeDymamoDBTables(List<String> tableNames) {
@@ -150,6 +153,50 @@ public class DynamoDBTest {
 		logger.info("Put Item in " + tableName + " Done!");
 	}
 
+	public void testGet() throws DynamoDbException {
+		
+		String key = "last-name";
+		String keyVal = "Scriffiny";
+		String sortKey = "first-name";
+		String sortKeyVal = "Patty";
+		String tableName = "Person";
+
+		 HashMap<String, AttributeValue> keyToGet = new HashMap<>();
+	        keyToGet.put(key, AttributeValue.builder()
+	                .s(keyVal)
+	                .build());
+	        
+	        keyToGet.put(sortKey, AttributeValue.builder()
+	                .s(sortKeyVal)
+	                .build());
+
+	        GetItemRequest request = GetItemRequest.builder()
+	                .key(keyToGet)
+	                .tableName(tableName)
+	                .build();
+
+		try {
+			 Map<String, AttributeValue> returnedItem = this.getConnection().getItem(request).item();
+	            if (returnedItem.isEmpty())
+	            	 logger.info(String.format("No item found with the key %s!\n", key));
+	            else {
+	                Set<String> keys = returnedItem.keySet();
+	                logger.info("Amazon DynamoDB table attributes: \n");
+	                for (String key1 : keys) {
+	                    logger.info(String.format("   %s: %s\n", key1, returnedItem.get(key1).toString()));
+	                }
+	            }
+			logger.info(tableName + " was successfully read.");
+
+		} catch (ResourceNotFoundException e) {
+			logger.error("Error: The Amazon DynamoDB table \"%s\" can't be found.\n", tableName);
+			logger.error("Be sure that it exists and that you've typed its name correctly!");
+		} catch (DynamoDbException e) {
+			logger.error("Cound not read :" + e.getMessage());
+
+		}
+	}
+	
 	private void putItemInTable(String tableName, String key, String keyVal, String sortKey, String sortKeyVal)
 			throws DynamoDbException {
 
