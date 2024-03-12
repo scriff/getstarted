@@ -1,0 +1,58 @@
+{
+    "Table": {
+        "AttributeDefinitions": [
+            {
+                "AttributeName": "first-name",
+                "AttributeType": "S"
+            },
+            {
+                "AttributeName": "last-name",
+                "AttributeType": "S"
+            }
+        ],
+        "TableName": "Person",
+        "KeySchema": [
+            {
+                "AttributeName": "last-name",
+                "KeyType": "HASH"
+            },
+            {
+                "AttributeName": "first-name",
+                "KeyType": "RANGE"
+            }
+        ],
+        "TableStatus": "ACTIVE",
+        "CreationDateTime": "2024-03-08T22:56:27.875000+00:00",
+        "ProvisionedThroughput": {
+            "NumberOfDecreasesToday": 0,
+            "ReadCapacityUnits": 0,
+            "WriteCapacityUnits": 0
+        },
+        "TableSizeBytes": 693,
+        "ItemCount": 4,
+        "TableArn": "arn:aws:dynamodb:us-east-2:556611960959:table/Person",
+        "TableId": "164eb135-a175-47ba-a3cf-34c16ebe997a",
+        "BillingModeSummary": {
+            "BillingMode": "PAY_PER_REQUEST",
+            "LastUpdateToPayPerRequestDateTime": "2024-03-08T22:56:27.875000+00:00"
+        },
+        "StreamSpecification": {
+            "StreamEnabled": true,
+            "StreamViewType": "NEW_AND_OLD_IMAGES"
+        },
+        "LatestStreamLabel": "2024-03-08T22:57:41.541",
+        "LatestStreamArn": "arn:aws:dynamodb:us-east-2:556611960959:table/Person/stream/2024-03-08T22:57:41.541",
+        "GlobalTableVersion": "2019.11.21",
+        "Replicas": [
+            {
+                "RegionName": "us-west-2",
+                "ReplicaStatus": "ACTIVE",
+                "ReplicaStatusDescription": "Failed to describe settings for the replica in region: ‘us-west-2’."
+            }
+        ],
+        "TableClassSummary": {
+            "TableClass": "STANDARD"
+        },
+        "DeletionProtectionEnabled": true
+    }
+}
