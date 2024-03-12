@@ -15,6 +15,7 @@ import software.amazon.awssdk.services.dynamodb.model.AttributeDefinition;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.DescribeTableRequest;
 import software.amazon.awssdk.services.dynamodb.model.DynamoDbException;
+import software.amazon.awssdk.services.dynamodb.model.Endpoint;
 import software.amazon.awssdk.services.dynamodb.model.GetItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.ListTablesRequest;
 import software.amazon.awssdk.services.dynamodb.model.ListTablesResponse;
@@ -49,8 +50,17 @@ public class DynamoDBTest {
 		return this.getConnectionManager().getPrimaryConnection();
 	}
 
+	public String getConnectionName() {
+		List<Endpoint> endpoints = this.getConnection().describeEndpoints().endpoints();
+
+		for (Endpoint endpoint : endpoints)
+			return endpoint.address();
+
+		return "unknown";
+
+	}
+
 	public static void main(String[] args) {
-		logger.info("Listing your Amazon DynamoDB tables:\n");
 
 		DynamoDBTest tester = new DynamoDBTest();
 
@@ -61,30 +71,28 @@ public class DynamoDBTest {
 
 		int testRuns = 50;
 		int numOfRuns = 0;
-		while (numOfRuns < testRuns)
-		{
-			try
-			{
+		while (numOfRuns < testRuns) {
+			try {
 				numOfRuns++;
 				logger.debug(String.format("Test run number %n", numOfRuns));
 				runTests(tester);
 				Thread.sleep(5000);
+			} catch (InterruptedException ex) {
 			}
-			catch (InterruptedException ex)
-			{}
 		}
 	}
-	
-	public static void runTests(DynamoDBTest tester)
-	{
-		//List<String> l = tester.listAllTables();
-		//tester.describeDymamoDBTables(l);
+
+	public static void runTests(DynamoDBTest tester) {
+		// List<String> l = tester.listAllTables();
+		// tester.describeDymamoDBTables(l);
 		tester.testPut();
 		tester.testGet();
+		tester.getConnectionManager().closeConnections();
 	}
 
 	public void describeDymamoDBTables(List<String> tableNames) {
 
+		logger.info("Listing your Amazon DynamoDB tables:\n");
 		for (String tableName : tableNames) {
 
 			DescribeTableRequest request = DescribeTableRequest.builder().tableName(tableName).build();
@@ -150,53 +158,49 @@ public class DynamoDBTest {
 		String sortKeyVal = "Patty";
 
 		putItemInTable(tableName, key, keyVal, sortKey, sortKeyVal);
-		logger.info("Put Item in " + tableName + " Done!");
+
 	}
 
 	public void testGet() throws DynamoDbException {
-		
+
 		String key = "last-name";
 		String keyVal = "Scriffiny";
 		String sortKey = "first-name";
 		String sortKeyVal = "Patty";
 		String tableName = "Person";
 
-		 HashMap<String, AttributeValue> keyToGet = new HashMap<>();
-	        keyToGet.put(key, AttributeValue.builder()
-	                .s(keyVal)
-	                .build());
-	        
-	        keyToGet.put(sortKey, AttributeValue.builder()
-	                .s(sortKeyVal)
-	                .build());
+		HashMap<String, AttributeValue> keyToGet = new HashMap<>();
+		keyToGet.put(key, AttributeValue.builder().s(keyVal).build());
 
-	        GetItemRequest request = GetItemRequest.builder()
-	                .key(keyToGet)
-	                .tableName(tableName)
-	                .build();
+		keyToGet.put(sortKey, AttributeValue.builder().s(sortKeyVal).build());
+
+		GetItemRequest request = GetItemRequest.builder().key(keyToGet).tableName(tableName).build();
 
 		try {
-			 Map<String, AttributeValue> returnedItem = this.getConnection().getItem(request).item();
-	            if (returnedItem.isEmpty())
-	            	 logger.info(String.format("No item found with the key %s!\n", key));
-	            else {
-	                Set<String> keys = returnedItem.keySet();
-	                logger.info("Amazon DynamoDB table attributes: \n");
-	                for (String key1 : keys) {
-	                    logger.info(String.format("   %s: %s\n", key1, returnedItem.get(key1).toString()));
-	                }
-	            }
+			Map<String, AttributeValue> returnedItem = this.getConnection().getItem(request).item();
+			if (returnedItem.isEmpty())
+				logger.info(String.format("No item found with the key %s!\n", key));
+			else {
+				Set<String> keys = returnedItem.keySet();
+
+				logger.info(
+						String.format("Amazon DynamoDB Read Result %s/%s: \n", this.getConnectionName(), tableName));
+				for (String key1 : keys) {
+					logger.info(String.format("   %s: %s\n", key1, returnedItem.get(key1).toString()));
+				}
+			}
 			logger.info(tableName + " was successfully read.");
 
 		} catch (ResourceNotFoundException e) {
 			logger.error("Error: The Amazon DynamoDB table \"%s\" can't be found.\n", tableName);
 			logger.error("Be sure that it exists and that you've typed its name correctly!");
 		} catch (DynamoDbException e) {
-			logger.error("Cound not read :" + e.getMessage());
+			logger.error("Could not read :" + e.getMessage());
 
 		}
+
 	}
-	
+
 	private void putItemInTable(String tableName, String key, String keyVal, String sortKey, String sortKeyVal)
 			throws DynamoDbException {
 
@@ -219,6 +223,8 @@ public class DynamoDBTest {
 			logger.error("Cound not write :" + e.getMessage());
 
 		}
+
+		logger.info(String.format("Put Item in %s/" + tableName + " Done!", this.getConnectionName()));
 	}
 
 }

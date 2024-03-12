@@ -17,7 +17,7 @@ import software.amazon.awssdk.services.dynamodb.model.PutItemResponse;
 
 public class DynamoDBConnection {
 	private static final Logger logger = LoggerFactory.getLogger(DynamoDBConnection.class);
-	
+
 	private DynamoDbClient dynamoDBClient_;
 	final Region region_;
 	private boolean isPrimary_ = false;
@@ -65,12 +65,10 @@ public class DynamoDBConnection {
 		}
 	}
 
-	
-	
 	private void setIsPrimary() {
-		
+
 		logger.info(String.format("Checking %s for primary", region_.toString()));
-		
+
 		String tableName = "Person";
 		HashMap<String, AttributeValue> itemValues = new HashMap<>();
 		itemValues.put("last-name", AttributeValue.builder().s(dynamoDBClient_.describeEndpoints().toString()).build());
@@ -92,12 +90,12 @@ public class DynamoDBConnection {
 			logger.error(e.getMessage());
 
 		}
-		
+
 		logger.info(String.format("Region %s primary is set to %s", region_.toString(), isPrimary_));
 	}
-	
-	public String toString()
-	{
+
+	@Override
+	public String toString() {
 		return String.format("DynamoDBConnection [Region: %s, isPrimary: %s]", region_.toString(), isPrimary_);
 	}
 }
