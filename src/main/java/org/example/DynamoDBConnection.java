@@ -1,5 +1,6 @@
 package org.example;
 
+import java.net.URI;
 import java.util.Date;
 import java.util.HashMap;
 
@@ -56,9 +57,12 @@ public class DynamoDBConnection {
 				dynamoDBClient_.close();
 
 			DynamoDbClientBuilder builder = DynamoDbClient.builder();
+			
+			URI uri = new URI("https://dynamodb.us-west-2.amazonaws.com");
 
 			dynamoDBClient_ = builder.region(region_).build();
-
+			//dynamoDBClient_ = builder.endpointOverride(uri).build();
+					
 			this.setIsPrimary();
 		} catch (Exception ex) {
 			logger.error("Error creating DDB Client" + ex);
