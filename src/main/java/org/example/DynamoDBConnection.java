@@ -58,10 +58,12 @@ public class DynamoDBConnection {
 
 			DynamoDbClientBuilder builder = DynamoDbClient.builder();
 			
-			URI uri = new URI("https://dynamodb.us-west-2.amazonaws.com");
+			//testing direct access to an endpoint
+			//URI uri = new URI("https://dynamodb.us-west-2.amazonaws.com");
+			//dynamoDBClient_ = builder.endpointOverride(uri).build();
 
 			dynamoDBClient_ = builder.region(region_).build();
-			//dynamoDBClient_ = builder.endpointOverride(uri).build();
+			
 					
 			this.setIsPrimary();
 		} catch (Exception ex) {
