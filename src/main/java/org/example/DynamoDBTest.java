@@ -10,12 +10,10 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeDefinition;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.DescribeTableRequest;
 import software.amazon.awssdk.services.dynamodb.model.DynamoDbException;
-import software.amazon.awssdk.services.dynamodb.model.Endpoint;
 import software.amazon.awssdk.services.dynamodb.model.GetItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.ListTablesRequest;
 import software.amazon.awssdk.services.dynamodb.model.ListTablesResponse;
@@ -46,28 +44,28 @@ public class DynamoDBTest {
 		return connMgr_;
 	}
 
-	public DynamoDbClient getConnection() {
+	public DynamoDBConnection getDynamoConnection() {
 		return this.getConnectionManager().getPrimaryConnection();
 	}
 
 	public String getConnectionName() {
-		List<Endpoint> endpoints = this.getConnection().describeEndpoints().endpoints();
-
-		for (Endpoint endpoint : endpoints)
-			return endpoint.address();
-
-		return "unknown";
-
+		DynamoDBConnection connection = this.getDynamoConnection();
+		return (connection == null) ? "unknown" : connection.getClientEndpointName();
 	}
 
 	public static void main(String[] args) {
 
 		DynamoDBTest tester = new DynamoDBTest();
-
-		if (tester.getConnection() == null) {
+		
+		System.setProperty("org.slf4j.simpleLogger.defaultLogLevel", "info");
+		
+		if (tester.getDynamoConnection() == null) {
 			logger.info("Could not establish connection");
-			System.exit(1);
+			//System.exit(1);
 		}
+
+		
+		logger.debug("Using connection: " + tester.getConnectionName());
 
 		int testRuns = 50;
 		int numOfRuns = 0;
@@ -75,30 +73,36 @@ public class DynamoDBTest {
 			try {
 				numOfRuns++;
 				logger.debug(String.format("Test run number %n", numOfRuns));
-				runTests(tester);
+				runTests(tester, numOfRuns);
 				Thread.sleep(5000);
 			} catch (InterruptedException ex) {
 			}
 		}
 	}
 
-	public static void runTests(DynamoDBTest tester) {
+	public static void runTests(DynamoDBTest tester, int numOfRuns) {
 		// List<String> l = tester.listAllTables();
 		// tester.describeDymamoDBTables(l);
-		tester.testPut();
-		tester.testGet();
-		tester.getConnectionManager().closeConnections();
+		String key = tester.testPut(numOfRuns);
+		tester.testGet(key);
 	}
 
 	public void describeDymamoDBTables(List<String> tableNames) {
 
 		logger.info("Listing your Amazon DynamoDB tables:\n");
+
+		DynamoDBConnection connection = this.getDynamoConnection();
+		if (connection == null) {
+			logger.info("No available connections");
+			return;
+		}
+
 		for (String tableName : tableNames) {
 
-			DescribeTableRequest request = DescribeTableRequest.builder().tableName(tableName).build();
-
 			try {
-				TableDescription tableInfo = this.getConnection().describeTable(request).table();
+				DescribeTableRequest request = DescribeTableRequest.builder().tableName(tableName).build();
+
+				TableDescription tableInfo = connection.describeTable(request);
 				if (tableInfo != null) {
 					logger.info("Table Summary");
 					logger.info(String.format("  Table name  : %s\n", tableInfo.tableName()));
@@ -128,12 +132,19 @@ public class DynamoDBTest {
 
 	public List<String> listAllTables() {
 
+		DynamoDBConnection connection = this.getDynamoConnection();
+
 		List<String> tableNames = new ArrayList<>();
+
+		if (connection == null) {
+			logger.info("No available connections");
+			return tableNames;
+		}
+
 		try {
-			ListTablesResponse response = null;
+			
 			ListTablesRequest request = ListTablesRequest.builder().build();
-			response = this.getConnection().listTables(request);
-			tableNames = response.tableNames();
+			tableNames = connection.listTables(request);
 			if (tableNames.size() > 0) {
 				for (String curName : tableNames) {
 					logger.info("* %s\n", curName);
@@ -149,22 +160,30 @@ public class DynamoDBTest {
 		return tableNames;
 	}
 
-	public void testPut() throws DynamoDbException {
+	public String testPut(int numOfRuns) throws DynamoDbException {
 
 		String tableName = "Person";
 		String key = "last-name";
-		String keyVal = "Scriffiny";
+		String keyVal = String.format("Scriffiny-%02d", numOfRuns);
 		String sortKey = "first-name";
 		String sortKeyVal = "Patty";
 
 		putItemInTable(tableName, key, keyVal, sortKey, sortKeyVal);
 
+		return keyVal;
+
 	}
 
-	public void testGet() throws DynamoDbException {
+	public void testGet(String keyVal) throws DynamoDbException {
+
+		DynamoDBConnection connection = this.getDynamoConnection();
+
+		if (connection == null) {
+			logger.info("No available connections");
+			return;
+		}
 
 		String key = "last-name";
-		String keyVal = "Scriffiny";
 		String sortKey = "first-name";
 		String sortKeyVal = "Patty";
 		String tableName = "Person";
@@ -177,7 +196,7 @@ public class DynamoDBTest {
 		GetItemRequest request = GetItemRequest.builder().key(keyToGet).tableName(tableName).build();
 
 		try {
-			Map<String, AttributeValue> returnedItem = this.getConnection().getItem(request).item();
+			Map<String, AttributeValue> returnedItem = connection.getItem(request).item();
 			if (returnedItem.isEmpty())
 				logger.info(String.format("No item found with the key %s!\n", key));
 			else {
@@ -204,17 +223,24 @@ public class DynamoDBTest {
 	private void putItemInTable(String tableName, String key, String keyVal, String sortKey, String sortKeyVal)
 			throws DynamoDbException {
 
+		DynamoDBConnection connection = this.getDynamoConnection();
+
+		if (connection == null) {
+			logger.info("No available connections");
+			return;
+		}
+
 		HashMap<String, AttributeValue> itemValues = new HashMap<>();
 		itemValues.put(key, AttributeValue.builder().s(keyVal).build());
 		itemValues.put(sortKey, AttributeValue.builder().s(sortKeyVal).build());
 		itemValues.put("timestamp", AttributeValue.builder().s(new Date().toString()).build());
+		itemValues.put("region", AttributeValue.builder().s(this.getConnectionName()).build());
 
 		PutItemRequest request = PutItemRequest.builder().tableName(tableName).item(itemValues).build();
 
 		try {
-			PutItemResponse response = this.getConnection().putItem(request);
-			logger.info(tableName + " was successfully updated. The request id is "
-					+ response.responseMetadata().requestId());
+			PutItemResponse response = connection.putItem(request);
+			logger.info(tableName + " was successfully updated");
 
 		} catch (ResourceNotFoundException e) {
 			logger.error("Error: The Amazon DynamoDB table \"%s\" can't be found.\n", tableName);
